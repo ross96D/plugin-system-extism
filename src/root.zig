@@ -1,3 +1,5 @@
+const proto = @import("protobuf");
+
 const std = @import("std");
 const testing = std.testing;
 const extism = @import("extism");
@@ -29,6 +31,8 @@ fn hello_from_zig(
 }
 
 test "basic add functionality" {
+    _ = proto;
+
     try testing.expect(add(3, 7) == 10);
 
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true, .verbose_log = true }){};

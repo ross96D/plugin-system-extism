@@ -1,4 +1,5 @@
 const std = @import("std");
+const protobuf = @import("protobuf");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -16,6 +17,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const extism = b.dependency("extism", .{});
+    const protobuf_dep = protoGen(b, target, optimize);
 
     const lib = b.addStaticLibrary(.{
         .name = "pulgin-system-extism",
@@ -26,6 +28,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     lib.root_module.addImport("extism", extism.module("extism"));
+    lib.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
@@ -40,7 +43,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.root_module.addImport("extism", extism.module("extism"));
-
+    exe.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
@@ -78,6 +81,7 @@ pub fn build(b: *std.Build) void {
     });
 
     lib_unit_tests.root_module.addImport("extism", extism.module("extism"));
+    lib_unit_tests.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
@@ -95,4 +99,30 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
     test_step.dependOn(&run_exe_unit_tests.step);
+}
+
+fn protoGen(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Dependency {
+    const protobuf_dep = b.dependency("protobuf", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const gen_proto = b.step("gen-proto", "generates zig files from protocol buffer definitions");
+
+    const protoc_step = protobuf.RunProtocStep.create(b, protobuf_dep.builder, target, .{
+        // out directory for the generated zig files
+        .destination_directory = b.path("src/proto"),
+        .source_files = &.{
+            "proto/testproto/v1/model.proto",
+        },
+        .include_directories = &.{},
+    });
+
+    gen_proto.dependOn(&protoc_step.step);
+
+    return protobuf_dep;
 }
