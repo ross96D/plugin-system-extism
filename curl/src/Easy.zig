@@ -409,17 +409,12 @@ pub fn head(self: Self, url: [:0]const u8) !Response {
 }
 
 /// Post issues a POST to the specified URL.
-pub fn post(self: Self, url: [:0]const u8, content_type: []const u8, body: []const u8) !Response {
+pub fn post(self: Self, url: [:0]const u8, body: []const u8) !Response {
     var buf = Buffer.init(self.allocator);
     try self.setWritefunction(bufferWriteCallback);
     try self.setWritedata(&buf);
     try self.setUrl(url);
     try self.setPostFields(body);
-
-    var headers = try self.createHeaders();
-    defer headers.deinit();
-    try headers.add("Content-Type", content_type);
-    try self.setHeaders(headers);
 
     var resp = try self.perform();
     resp.body = buf;
