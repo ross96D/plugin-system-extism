@@ -1,4 +1,6 @@
 const proto = @import("protobuf");
+const pb_models = @import("proto/root.zig");
+const curl = @import("curl");
 
 const std = @import("std");
 const testing = std.testing;
@@ -30,9 +32,79 @@ fn hello_from_zig(
     _ = user_data;
 }
 
-test "basic add functionality" {
-    _ = proto;
+// input: pointer to bytes, output: pointer to bytes
+fn host_fn_request(
+    plugin_ptr: ?*c_extism.ExtismCurrentPlugin,
+    inputs: [*c]const c_extism.ExtismVal,
+    n_inputs: u64,
+    outputs: [*c]c_extism.ExtismVal,
+    n_outputs: u64,
+    user_data: ?*anyopaque,
+) callconv(.C) void {
+    _ = user_data;
+    const allocator = std.heap.c_allocator;
 
+    var input_slice = inputs[0..n_inputs];
+    var output_slice = outputs[0..n_outputs];
+
+    var curr_plugin = CurrentPlugin.getCurrentPlugin(plugin_ptr orelse unreachable);
+
+    const input = curr_plugin.inputBytes(&input_slice[0]);
+
+    const req = pb_models.Request.decode(input, allocator) catch unreachable; // TODO handle this
+
+    const response = request(allocator, req) catch unreachable; // TODO handle this
+    const respdata = response.encode(allocator) catch unreachable;
+
+    curr_plugin.returnBytes(&output_slice[0], respdata);
+}
+
+fn request(allocator: std.mem.Allocator, req: *const pb_models.Request) !pb_models.Response {
+    var headers = try curl.Easy.Headers.init(allocator);
+    for (req.headers.items) |entry| {
+        headers.add(entry.key.getSlice(), entry.value.getSlice());
+    }
+
+    const ca = curl.allocCABundle(allocator);
+    var easy = try curl.Easy.init(allocator, .{ .ca_bundle = ca });
+    easy.setHeaders(headers);
+
+    const url = try allocator.dupeZ(u8, req.url.getSlice());
+
+    switch (req.method) {
+        .METHOD_GET => {
+            var resp = try easy.get(url);
+            defer resp.deinit();
+            var body = proto.ManagedString(proto.ManagedStringTag.Empty);
+            if (resp.body) |b| {
+                body = proto.ManagedString.copy(b.items, allocator);
+            }
+            return .{
+                .status = resp.status_code,
+                .body = body,
+                // .headers = TODO get headers
+            };
+        },
+        .METHOD_POST => {
+            var resp = try easy.post(url, req.body.getSlice());
+            defer resp.deinit();
+            var body = proto.ManagedString(proto.ManagedStringTag.Empty);
+            if (resp.body) |b| {
+                body = proto.ManagedString.copy(b.items, allocator);
+            }
+            return .{
+                .status = resp.status_code,
+                .body = body,
+                // .headers = TODO get headers
+            };
+        },
+        else => return .{},
+    }
+
+    return .{};
+}
+
+test "basic add functionality" {
     try testing.expect(add(3, 7) == 10);
 
     var gpa = std.heap.GeneralPurposeAllocator(.{ .safety = true, .verbose_log = true }){};
