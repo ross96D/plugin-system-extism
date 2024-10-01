@@ -5,6 +5,7 @@ const CurrentPlugin = sdk.CurrentPlugin;
 const Function = sdk.Function;
 const manifest = sdk.manifest;
 
+// input: pointer to bytes, output: pointer to bytes
 export fn hello_world(plugin_ptr: ?*sdk.c.ExtismCurrentPlugin, inputs: [*c]const sdk.c.ExtismVal, n_inputs: u64, outputs: [*c]sdk.c.ExtismVal, n_outputs: u64, user_data: ?*anyopaque) callconv(.C) void {
     std.debug.print("Hello from Zig!\n", .{});
     const str_ud = @as([*:0]const u8, @ptrCast(user_data orelse unreachable));
