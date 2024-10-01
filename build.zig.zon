@@ -28,6 +28,7 @@
             .url = "https://github.com/Arwalk/zig-protobuf/archive/1240df8142aca47d782c5de5e8f6a31c97ffc328.tar.gz",
             .hash = "12206974924467d1eab8e58018954a46a6ef87f17fc2c4fdd7988ff11c3ce886688a",
         },
+        .curl = .{ .path = "curl" },
     },
     .paths = .{
         "build.zig",

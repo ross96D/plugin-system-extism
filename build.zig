@@ -16,8 +16,9 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const extism = b.dependency("extism", .{});
+    const extism_dep = b.dependency("extism", .{});
     const protobuf_dep = protoGen(b, target, optimize);
+    const curl_dep = b.dependency("curl", .{});
 
     const lib = b.addStaticLibrary(.{
         .name = "pulgin-system-extism",
@@ -27,8 +28,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lib.root_module.addImport("extism", extism.module("extism"));
+    lib.root_module.addImport("extism", extism_dep.module("extism"));
     lib.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
+    lib.root_module.addImport("curl", curl_dep.module("curl"));
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
@@ -42,8 +44,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    exe.root_module.addImport("extism", extism.module("extism"));
+    exe.root_module.addImport("extism", extism_dep.module("extism"));
     exe.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
+    exe.root_module.addImport("curl", curl_dep.module("curl"));
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
@@ -80,8 +84,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    lib_unit_tests.root_module.addImport("extism", extism.module("extism"));
+    lib_unit_tests.root_module.addImport("extism", extism_dep.module("extism"));
     lib_unit_tests.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
+    lib_unit_tests.root_module.addImport("curl", curl_dep.module("curl"));
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
